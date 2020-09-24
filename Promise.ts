@@ -159,6 +159,7 @@ class MPromise implements IMPromise {
         }
 
         static Race(waitExecute:MPromise[]) {
+            waitExecute = waitExecute.map(v => (v instanceof MPromise) ? v : MPromise.Resolve(v))
             let _continue : resolve = null
             let _reject : reject = null
 
