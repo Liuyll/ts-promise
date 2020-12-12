@@ -1,0 +1,20 @@
+{
+  "name": "ts-promise",
+  "version": "1.0.0",
+  "description": "a promise simple realize",
+  "main": "lib/promise.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Liuyll/ts-promise.git"
+  },
+  "author": "liuyll",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Liuyll/ts-promise/issues"
+  },
+  "homepage": "https://github.com/Liuyll/ts-promise#readme"
+}

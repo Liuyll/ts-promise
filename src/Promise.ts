@@ -8,10 +8,10 @@ type promiseExecutor = (onFulfilled:resolve,onRejected:reject) => any | null
 
 interface IMPromiseConstructor {
     new (executor:promiseExecutor):MPromise;
-    Resolve(value:any):MPromise;
-    Reject(err:any):MPromise;
-    Race:Array<IMPromise>;
-    All:Array<IMPromise>;
+    resolve(value:any):MPromise;
+    reject(err:any):MPromise;
+    race:Array<IMPromise>;
+    all:Array<IMPromise>;
 }
 
 interface IMPromise {
@@ -48,10 +48,12 @@ class MPromise implements IMPromise {
             }   
 
             if(value instanceof MPromise) {
-                value.then((val) => {
-                    if(val instanceof MPromise) resolve(val)
-                    else _resolveGeneralValue(val)
-                },err => reject(err))
+                this.promiseResolveThenableJon(() => {
+                    value.then((val) => {
+                        if(val instanceof MPromise) resolve(val)
+                        else _resolveGeneralValue(val)
+                    },err => reject(err))
+                })
             } else {
                 _resolveGeneralValue(value)
             }
@@ -125,15 +127,15 @@ class MPromise implements IMPromise {
         catch = (onRejected:thenRejectExecutor):MPromise => 
             this.then(null,onRejected)
 
-        static Resolve(v:any):MPromise{
+        static resolve(v ?: any):MPromise{
             return new MPromise(resolve => resolve(v))
         }
 
-        static Reject(e:any):MPromise{
+        static reject(e ?: any):MPromise{
             return new MPromise((_,reject) => reject(e))
         }
 
-        static All(waitExecute:MPromise[]) {
+        static all(waitExecute:MPromise[]) {
             let executeCount = 0
             let executeResult:unknown = []
             let executeErr:Error = null
@@ -158,8 +160,8 @@ class MPromise implements IMPromise {
             })
         }
 
-        static Race(waitExecute:MPromise[]) {
-            waitExecute = waitExecute.map(v => (v instanceof MPromise) ? v : MPromise.Resolve(v))
+        static race(waitExecute:MPromise[]) {
+            waitExecute = waitExecute.map(v => (v instanceof MPromise) ? v : MPromise.resolve(v))
             let _continue : resolve = null
             let _reject : reject = null
 
@@ -176,7 +178,10 @@ class MPromise implements IMPromise {
                 _reject = rejected
             })
         }
+
+        private promiseResolveThenableJon = (r) => {
+            queueMicrotask(r)
+        }
 }
 
-
-
+export default MPromise
