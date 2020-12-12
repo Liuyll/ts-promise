@@ -48,12 +48,10 @@ class MPromise implements IMPromise {
             }   
 
             if(value instanceof MPromise) {
-                this.promiseResolveThenableJon(() => {
-                    value.then((val) => {
-                        if(val instanceof MPromise) resolve(val)
-                        else _resolveGeneralValue(val)
-                    },err => reject(err))
-                })
+                this.promiseResolveThenableJob(value).then((val) => {
+                    if(val instanceof MPromise) resolve(val)
+                    else _resolveGeneralValue(val)
+                },err => reject(err))
             } else {
                 _resolveGeneralValue(value)
             }
@@ -179,8 +177,10 @@ class MPromise implements IMPromise {
             })
         }
 
-        private promiseResolveThenableJon = (r) => {
-            queueMicrotask(r)
+        private promiseResolveThenableJob = (instance) => {
+            return new MPromise(r => {
+                instance.then(ret => r(ret))
+            })
         }
 }
 
