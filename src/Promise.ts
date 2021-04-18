@@ -1,5 +1,5 @@
-type resolve = (value:unknown) => void 
-type reject = (err:unknown) => void
+type resolve = (value?:unknown) => void 
+type reject = (err?:unknown) => void
 
 type thenFulfillExecutor = (data:any) => any | any
 type thenRejectExecutor = (err:any) => any | any
@@ -8,8 +8,8 @@ type promiseExecutor = (onFulfilled:resolve,onRejected:reject) => any | null
 
 interface IMPromiseConstructor {
     new (executor:promiseExecutor):MPromise;
-    resolve(value:any):MPromise;
-    reject(err:any):MPromise;
+    resolve(value?:any):MPromise;
+    reject(err?:any):MPromise;
     race:Array<IMPromise>;
     all:Array<IMPromise>;
 }
@@ -32,7 +32,8 @@ class MPromise implements IMPromise {
     err:any
 
     constructor(executor:promiseExecutor){
-        this._FulfilledTaskQueue = this._RejectedTaskQueue = []
+        this._RejectedTaskQueue = []
+        this._FulfilledTaskQueue = []
         this.status = "PENDING"
         this.value = this.err = null
         
@@ -57,13 +58,16 @@ class MPromise implements IMPromise {
             }
         }
 
-
+        // chain error to catch
         const reject:reject = (err:any) => {
             if(this.status == "PENDING") {
                 this.status = "REJECTED"
                 this.err = err
+                if(!this._RejectedTaskQueue.length) {
+                    throw new Error('MPromise throw uncaught error.')
+                }
                 this._RejectedTaskQueue.forEach((thenFunc) => {
-                    thenFunc()
+                    thenFunc(err)
                 })
             }
         }
@@ -78,9 +82,12 @@ class MPromise implements IMPromise {
 
     then = (onFulfilled:thenFulfillExecutor | any,onRejected ?:thenRejectExecutor):MPromise => 
         new MPromise((resolve:resolve,reject:reject) => {
+            let shouldThrowChainError = false
             if(!onRejected) {
-                onRejected = () => {}
+                onRejected = (err?:any) => err
+                shouldThrowChainError = true
             }
+
             const registerResolveTask = () => {
                 if(typeof onFulfilled != "function") resolve(this.value)
                 try {
@@ -92,20 +99,25 @@ class MPromise implements IMPromise {
                 }
             }
 
-            const registerRejectTask = () => {
+            const registerRejectTask = (err?:any) => {
                 if(typeof onRejected != "function") reject(onRejected)
+                let res: any
                 try {
-                    const res = onRejected(this.err)
-                    if(res instanceof MPromise) res.then(resolve,reject)
-                    else reject(res)
+                    res = onRejected(err)       
                 } catch(err) {
-                    reject(err)
+                    res = err
                 }
+
+                const handle: reject | resolve = shouldThrowChainError ? reject : resolve
+                if(res instanceof MPromise) {
+                    handle(res.then(resolve,reject))
+                }
+                else handle(res)
             }
 
             const _FactExecuteTask = {
                 resolveTask : () => queueMicrotask(registerResolveTask),
-                rejectTask : () => queueMicrotask(registerRejectTask),
+                rejectTask : (err?:any) => queueMicrotask(() => registerRejectTask(err)),
             }
 
             switch(this.status) {
